@@ -3,6 +3,7 @@ package com.project.forKnowledegeTesting.service;
 import com.project.forKnowledegeTesting.dto.RegisterDTO;
 import com.project.forKnowledegeTesting.dto.RequestDTO;
 import com.project.forKnowledegeTesting.dto.ResponseDTO;
+import com.project.forKnowledegeTesting.exception.AuthenticationFailedException;
 import com.project.forKnowledegeTesting.exception.TokenExpiredException;
 import com.project.forKnowledegeTesting.mapper.UserMapper;
 import com.project.forKnowledegeTesting.repository.UserRepository;
@@ -37,7 +38,7 @@ public class AuthService {
     }
 
 
-    public ResponseDTO login(RequestDTO requestDTO) throws AttributeInUseException {
+    public ResponseDTO login(RequestDTO requestDTO) {
         try{
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(requestDTO.getUsername(),requestDTO.getPassword())
@@ -49,9 +50,9 @@ public class AuthService {
             return new ResponseDTO(token,refreshToken);
             }
         }catch (AuthenticationException e){
-            throw new AttributeInUseException("Invalid username or password");
+            throw new AuthenticationFailedException("Invalid username or password");
         }
-        throw new AttributeInUseException("Invalid username or password");
+        throw new AuthenticationFailedException("Invalid username or password");
     }
 
 
@@ -67,20 +68,26 @@ public class AuthService {
     }
 
 
-    public ResponseDTO refreshToken(String refreshToken) throws TokenExpiredException {
+    public ResponseDTO refreshToken(String refreshToken)  {
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("Refresh token must not be null or empty");
+        }
         try {
+
             String username = jwtService.extractUserName(refreshToken);
-            if (!jwtService.isTokenExpired(refreshToken)) {
-                String newAccessToken = jwtService.generateAccessToken(username);
-                String newRefreshToken = jwtService.generateRefreshToken(username);
-                return new ResponseDTO(newAccessToken, newRefreshToken);
+            if (jwtService.isTokenExpired(refreshToken)) {
+              throw new TokenExpiredException("Token has expired");
             }
+
+            String newAccessToken = jwtService.generateAccessToken(username);
+            String newRefreshToken = jwtService.generateRefreshToken(username);
+            return new ResponseDTO(newAccessToken, newRefreshToken);
+
         } catch (ExpiredJwtException e) {
             throw new TokenExpiredException("Token expired");
         }catch (SecurityException e){
         throw new TokenExpiredException("Invalid token");
         }
-        return null;
     }
 
 }

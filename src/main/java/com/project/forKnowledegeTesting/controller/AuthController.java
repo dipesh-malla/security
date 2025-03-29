@@ -27,7 +27,6 @@ public class AuthController {
             @RequestBody RequestDTO requestDTO,
             HttpServletResponse response
     ) {
-        try{
             ResponseDTO responseDTO = authService.login(requestDTO);
             String refreshToken = responseDTO.refreshToken();
             Cookie refreshTokenCookie = new Cookie("refreshToken", refreshToken);
@@ -35,9 +34,7 @@ public class AuthController {
             refreshTokenCookie.setMaxAge(60 * 60 * 24 * 30);
             response.addCookie(refreshTokenCookie);
             return ResponseEntity.ok(responseDTO);
-        }catch (AttributeInUseException e){
-            return ResponseEntity.status(401).body("Invalid username or password");
-        }
+
     }
 
     @PostMapping("/api/auth/register")
@@ -54,17 +51,16 @@ public class AuthController {
     public ResponseEntity<?> refresh(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
             HttpServletResponse response) {
-      try{
+
           ResponseDTO responseDTO = authService.refreshToken(refreshToken);
           String refresh = responseDTO.refreshToken();
           Cookie refreshTokenCookie = new Cookie("refreshToken", refresh);
           refreshTokenCookie.setHttpOnly(true);
           refreshTokenCookie.setMaxAge(60 * 60 * 24 * 30);
           response.addCookie(refreshTokenCookie);
+
           return ResponseEntity.ok(responseDTO);
-      }catch (TokenExpiredException e){
-            return ResponseEntity.status(401).body("Token expired");
-      }
+
     }
 
 
