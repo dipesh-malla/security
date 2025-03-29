@@ -3,16 +3,20 @@ package com.project.forKnowledegeTesting.service;
 import com.project.forKnowledegeTesting.dto.RegisterDTO;
 import com.project.forKnowledegeTesting.dto.RequestDTO;
 import com.project.forKnowledegeTesting.dto.ResponseDTO;
+import com.project.forKnowledegeTesting.exception.TokenExpiredException;
 import com.project.forKnowledegeTesting.mapper.UserMapper;
 import com.project.forKnowledegeTesting.repository.UserRepository;
+import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.stereotype.Service;
+
+import javax.naming.directory.AttributeInUseException;
 
 @Service
 public class AuthService {
@@ -32,20 +36,51 @@ public class AuthService {
         this.userRepository = userRepository;
     }
 
-    public ResponseDTO login(RequestDTO requestDTO) {
-        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(requestDTO.getUsername(),requestDTO.getPassword()));
-        if (authentication.isAuthenticated()) {
+
+    public ResponseDTO login(RequestDTO requestDTO) throws AttributeInUseException {
+        try{
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(requestDTO.getUsername(),requestDTO.getPassword())
+            );
+            if (authentication.isAuthenticated()) {
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            String token = jwtService.generateToken(requestDTO.getUsername());
-            return new ResponseDTO(token);
+            String token = jwtService.generateAccessToken(requestDTO.getUsername());
+            String refreshToken = jwtService.generateRefreshToken(requestDTO.getUsername());
+            return new ResponseDTO(token,refreshToken);
+            }
+        }catch (AuthenticationException e){
+            throw new AttributeInUseException("Invalid username or password");
         }
-        return new ResponseDTO("Invalid username or password");
+        throw new AttributeInUseException("Invalid username or password");
     }
 
-    public ResponseDTO register(RegisterDTO registerDTO) {
+
+
+    public String register(RegisterDTO registerDTO) {
+
+        if (userRepository.findByUsername(registerDTO.getUsername()).isPresent()) {
+            return "Username already exists";
+        }
         registerDTO.setPassword(encoder.encode(registerDTO.getPassword()));
         userRepository.save(userMapper.toUser(registerDTO));
-        String token = jwtService.generateToken(registerDTO.getUsername());
-        return new ResponseDTO(token);
+        return "Registration successful, please log in.";
     }
+
+
+    public ResponseDTO refreshToken(String refreshToken) throws TokenExpiredException {
+        try {
+            String username = jwtService.extractUserName(refreshToken);
+            if (!jwtService.isTokenExpired(refreshToken)) {
+                String newAccessToken = jwtService.generateAccessToken(username);
+                String newRefreshToken = jwtService.generateRefreshToken(username);
+                return new ResponseDTO(newAccessToken, newRefreshToken);
+            }
+        } catch (ExpiredJwtException e) {
+            throw new TokenExpiredException("Token expired");
+        }catch (SecurityException e){
+        throw new TokenExpiredException("Invalid token");
+        }
+        return null;
+    }
+
 }

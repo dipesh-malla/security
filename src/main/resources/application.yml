@@ -9,6 +9,9 @@ spring:
       ddl-auto: create-drop
     show-sql: true
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-
 server:
   port: 8080
+
+jwt:
+  secret: "mynameismalleyandthisismysecretkeywhichis32bitlong"
+
