@@ -8,8 +8,6 @@ This project is a secure Spring Boot backend application that implements:
 - 🗄️ **PostgreSQL** as the database
 - 🐳 **Docker** support for containerization
 
-> ⚠️ This project does not implement OAuth yet, but dependencies may exist for learning purposes.
-
 ---
 
 ## 🔧 Tech Stack
